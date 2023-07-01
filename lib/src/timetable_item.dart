@@ -6,7 +6,7 @@
 /// Optional fields:
 ///  - [data] - Optional generic payload that can be used by the item builder to render the item card
 ///
-/// Caluculated fields:
+/// Calculated fields:
 /// - [duration] - Duration is the difference between [start] and [end] provided in the constructor
 class TimetableItem<T> {
   TimetableItem(this.start, this.end, {this.data})

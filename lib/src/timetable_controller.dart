@@ -1,9 +1,10 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 /// A controller for the timetable.
 ///
-/// The controller allow intialization of the timetable and to expose timetable functionality to the outside.
+/// The controller allow initialization of the timetable and to expose timetable functionality to the outside.
 class TimetableController {
   TimetableController({
     /// The number of day columns to show.

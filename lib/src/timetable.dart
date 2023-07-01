@@ -125,7 +125,7 @@ class _TimetableState<T> extends State<Timetable<T>> {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
       key: _key,
-      builder: (context, contraints) {
+      builder: (context, constraints) {
         return Column(
           children: [
             SizedBox(
@@ -185,6 +185,7 @@ class _TimetableState<T> extends State<Timetable<T>> {
                 child: SingleChildScrollView(
                   controller: _timeScrollController,
                   child: SizedBox(
+                    // TODO(tkc): 24時間以上にする必要がある。24が散らばってる。
                     height: controller.cellHeight * 24.0,
                     child: Row(
                       children: [
@@ -300,6 +301,7 @@ class _TimetableState<T> extends State<Timetable<T>> {
   final _dateFormatter = DateFormat('MMM\nd');
 
   Widget _buildHeaderCell(int i) {
+    // TODO(tkc): 日付以外に対応させないと
     final date = controller.start.add(Duration(days: i));
     if (widget.headerCellBuilder != null) {
       return widget.headerCellBuilder!(date);
