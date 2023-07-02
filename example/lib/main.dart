@@ -45,7 +45,10 @@ class TimetableScreen extends StatelessWidget {
             ),
           ],
         ),
-        body: const Timetable(),
+        body: Timetable(
+          controller: TimetableController(
+              headerConfig: TimetableHeaderConfig.defaultDateTimeHeader),
+        ),
       );
 }
 
@@ -58,20 +61,38 @@ class CustomTimetableScreen extends StatefulWidget {
 
 class _CustomTimetableScreenState extends State<CustomTimetableScreen> {
   final items = generateItems();
-  final controller = TimetableController(
-    start: DateUtils.dateOnly(DateTime.now()).subtract(const Duration(days: 7)),
-    initialColumns: 3,
-    cellHeight: 100.0,
-  );
+  late final TimetableController<DateTime> controller;
 
   @override
   void initState() {
     super.initState();
+    final nowDate = DateUtils.dateOnly(DateTime.now());
+    final format = DateFormat('MMM\nd');
+    final headers = List<TimetableHeader<DateTime>>.generate(14, (index) {
+      final date = nowDate.add(Duration(days: index));
+      return TimetableHeader<DateTime>(date);
+    });
+    controller = TimetableController(
+      headerConfig:
+          TimetableHeaderConfig(headers, (date) => format.format(date.value)),
+      initialColumns: 3,
+      cellHeight: 100.0,
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       Future.delayed(const Duration(milliseconds: 100), () {
-        controller.jumpTo(DateTime.now());
+        controller.jumpTo(_nowCell());
       });
     });
+  }
+
+  TimetableCell<DateTime> _nowCell() {
+    final now = DateTime.now();
+    final nowDate = DateUtils.dateOnly(now);
+    final header =
+        controller.headers.firstWhere((header) => header.value == nowDate);
+    final nowCell = TimetableCell<DateTime>(now.hour, header);
+    return nowCell;
   }
 
   @override
@@ -117,31 +138,35 @@ class _CustomTimetableScreenState extends State<CustomTimetableScreen> {
             ),
           ],
         ),
-        body: Timetable<String>(
+        body: Timetable<String, DateTime>(
           controller: controller,
           items: items,
-          cellBuilder: (datetime) => Container(
+          cellBuilder: (cell) => Container(
             decoration: BoxDecoration(
               border: Border.all(color: Colors.blueGrey, width: 0.2),
             ),
             child: Center(
               child: Text(
-                DateFormat("MM/d/yyyy\nha").format(datetime),
+                '${DateFormat("MM/d/yyyy").format(cell.header.value)}\n${cell.timeOfDay.hourOfPeriod}${cell.timeOfDay.period.name}',
                 style: TextStyle(
                   color: Color(0xff000000 +
-                          (0x002222 * datetime.hour) +
-                          (0x110000 * datetime.day))
+                          (0x002222 * cell.hour) +
+                          (0x110000 * cell.header.value.day))
                       .withOpacity(0.5),
                 ),
                 textAlign: TextAlign.center,
               ),
             ),
           ),
-          cornerBuilder: (datetime) => Container(
-            color: Colors.accents[datetime.day % Colors.accents.length],
-            child: Center(child: Text("${datetime.year}")),
-          ),
-          headerCellBuilder: (datetime) {
+          cornerBuilder: (currentHeader) {
+            final datetime = currentHeader.value;
+            return Container(
+              color: Colors.accents[datetime.day % Colors.accents.length],
+              child: Center(child: Text("${datetime.year}")),
+            );
+          },
+          headerCellBuilder: (header) {
+            final datetime = header.value;
             final color =
                 Colors.primaries[datetime.day % Colors.accents.length];
             return Container(
@@ -159,12 +184,12 @@ class _CustomTimetableScreenState extends State<CustomTimetableScreen> {
               ),
             );
           },
-          hourLabelBuilder: (time) {
-            final hour = time.hour == 12 ? 12 : time.hour % 12;
-            final period = time.hour < 12 ? "am" : "pm";
-            final isCurrentHour = time.hour == DateTime.now().hour;
+          hourLabelBuilder: (hour) {
+            final hourPeriod = hour == 12 ? 12 : hour % 12;
+            final period = hour < 12 ? "am" : "pm";
+            final isCurrentHour = hour == DateTime.now().hour;
             return Text(
-              "$hour$period",
+              "$hourPeriod$period",
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: isCurrentHour ? FontWeight.bold : FontWeight.normal,
@@ -195,22 +220,23 @@ class _CustomTimetableScreenState extends State<CustomTimetableScreen> {
         ),
         floatingActionButton: FloatingActionButton(
           child: const Text("Now"),
-          onPressed: () => controller.jumpTo(DateTime.now()),
+          onPressed: () => controller.jumpTo(_nowCell()),
         ),
       );
 }
 
 /// Generates some random items for the timetable.
-List<TimetableItem<String>> generateItems() {
+List<TimetableItem<String, DateTime>> generateItems() {
   final random = Random();
-  final items = <TimetableItem<String>>[];
+  final items = <TimetableItem<String, DateTime>>[];
   final today = DateUtils.dateOnly(DateTime.now());
   for (var i = 0; i < 100; i++) {
     int hourOffset = random.nextInt(56 * 24) - (7 * 24);
     final date = today.add(Duration(hours: hourOffset));
-    items.add(TimetableItem(
-      date,
-      date.add(Duration(minutes: (random.nextInt(8) * 15) + 15)),
+    final endDate = date.add(Duration(minutes: (random.nextInt(8) * 15) + 15));
+    items.add(TimetableItem.dateTime(
+      start: date,
+      end: endDate,
       data: "item $i",
     ));
   }

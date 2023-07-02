@@ -6,9 +6,11 @@ import 'package:intl/intl.dart';
 void main() {
   testWidgets("Timetable", (WidgetTester tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Timetable(
-          key: Key("TEST"),
+          key: const Key("TEST"),
+          controller: TimetableController(
+              headerConfig: TimetableHeaderConfig.defaultDateTimeHeader),
         ),
       ),
     );
@@ -17,29 +19,35 @@ void main() {
   });
   testWidgets("Timetable sorts items", (WidgetTester tester) async {
     final items = [
-      TimetableItem(
-        DateTime(2020, 1, 1, 10, 0),
-        DateTime(2020, 1, 1, 11, 0),
+      TimetableItem.dateTime(
+        start: DateTime(2020, 1, 1, 10, 0),
+        end: DateTime(2020, 1, 1, 10, 1),
       ),
-      TimetableItem(
-        DateTime(2020, 1, 1, 9, 0),
-        DateTime(2020, 1, 1, 10, 0),
+      TimetableItem.dateTime(
+        start: DateTime(2020, 1, 1, 9, 0),
+        end: DateTime(2020, 1, 1, 9, 1),
       ),
     ];
     await tester.pumpWidget(
       MaterialApp(
-        home: Timetable(items: items),
+        home: Timetable(
+          items: items,
+          controller: TimetableController(
+              headerConfig: TimetableHeaderConfig.defaultDateTimeHeader),
+        ),
       ),
     );
-    expect(items.first.start, DateTime(2020, 1, 1, 9, 0));
-    expect(items.last.start, DateTime(2020, 1, 1, 10, 0));
+    expect(items.first.start.hour, 9);
+    expect(items.last.start.hour, 10);
   });
 
   testWidgets("Timetable with custom header cell", (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Timetable(
-          headerCellBuilder: (DateTime date) => Text(date.toString()),
+          headerCellBuilder: (header) => Text(header.toString()),
+          controller: TimetableController(
+              headerConfig: TimetableHeaderConfig.defaultDateTimeHeader),
         ),
       ),
     );
@@ -51,7 +59,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Timetable(
-          cellBuilder: (DateTime date) => Text(date.toString()),
+          cellBuilder: (cell) => Text(cell.toString()),
+          controller: TimetableController(
+              headerConfig: TimetableHeaderConfig.defaultDateTimeHeader),
         ),
       ),
     );
@@ -63,7 +73,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Timetable(
-          hourLabelBuilder: (TimeOfDay time) => Text(time.toString()),
+          hourLabelBuilder: (hour) => Text(hour.toString()),
+          controller: TimetableController(
+              headerConfig: TimetableHeaderConfig.defaultDateTimeHeader),
         ),
       ),
     );
@@ -73,23 +85,24 @@ void main() {
 
   testWidgets("Timetable with custom day label", (WidgetTester tester) async {
     final items = [
-      TimetableItem<String>(
-        DateTime(2020, 1, 1, 10, 0),
-        DateTime(2020, 1, 1, 11, 0),
+      TimetableItem.dateTime(
+        start: DateTime(2020, 1, 1, 10, 0),
+        end: DateTime(2020, 1, 1, 11, 0),
         data: "test",
       ),
-      TimetableItem<String>(
-        DateTime(2020, 1, 1, 9, 0),
-        DateTime(2020, 1, 1, 10, 0),
+      TimetableItem.dateTime(
+        start: DateTime(2020, 1, 1, 9, 0),
+        end: DateTime(2020, 1, 1, 10, 0),
         data: "test 2",
       ),
     ];
-    final controller = TimetableController(
-      start: DateTime(2020, 1, 1, 10, 0),
+    final controller = TimetableController<DateTime>(
+      headerConfig: TimetableHeaderConfig.dateTimeHeader(
+          start: DateTime(2020, 1, 1, 10, 0), format: DateFormat.H()),
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: Timetable<String>(
+        home: Timetable<String, DateTime>(
           items: items,
           itemBuilder: (item) => Text(item.data ?? ""),
           controller: controller,
@@ -101,25 +114,25 @@ void main() {
   });
 
   testWidgets("Timetable with custom day label", (WidgetTester tester) async {
-    final item = TimetableItem<String>(
-      DateTime(2020, 1, 1, 10, 0),
-      DateTime(2020, 1, 1, 11, 0),
+    final item = TimetableItem.dateTime(
+      start: DateTime(2020, 1, 1, 10, 0),
+      end: DateTime(2020, 1, 1, 11, 0),
       data: "test",
     );
 
-    final controller = TimetableController(
-      start: DateTime(2020, 1, 1, 10, 0),
+    final controller = TimetableController<DateTime>(
+      headerConfig: TimetableHeaderConfig.dateTimeHeader(
+          start: DateTime(2020, 1, 1, 10, 0), format: DateFormat.H()),
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: Timetable<String>(
+        home: Timetable<String, DateTime>(
           items: [item],
           controller: controller,
         ),
       ),
     );
-    final hmma = DateFormat("h:mm a");
-    final label = "${hmma.format(item.start)} - ${hmma.format(item.end)}";
+    const label = "10:00 am - 11:00 am";
     expect(find.text(label, skipOffstage: false), findsOneWidget);
   });
 
@@ -127,7 +140,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Timetable(
-          cornerBuilder: (DateTime date) => const Text("TEST"),
+          cornerBuilder: (_) => const Text("TEST"),
+          controller: TimetableController(
+            headerConfig: TimetableHeaderConfig.defaultDateTimeHeader,
+          ),
         ),
       ),
     );
@@ -136,7 +152,8 @@ void main() {
 
   testWidgets("controller jump to", (tester) async {
     final controller = TimetableController(
-      start: DateTime(2020, 1, 1, 10, 0),
+      headerConfig: TimetableHeaderConfig.dateTimeHeader(
+          start: DateTime(2020, 1, 1, 10, 0), format: DateFormat.H()),
     );
     await tester.pumpWidget(
       MaterialApp(
@@ -146,15 +163,16 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(controller.visibleDateStart, DateTime(2020, 1, 1));
-    controller.jumpTo(DateTime(2020, 1, 15, 11));
+    expect(controller.visibleTimetableHeader.value, DateTime(2020, 1, 1));
+    controller.jumpTo(TimetableCell.fromDateTime(DateTime(2020, 1, 15, 11)));
     await tester.pumpAndSettle();
-    expect(controller.visibleDateStart, DateTime(2020, 1, 15));
+    expect(controller.visibleTimetableHeader.value, DateTime(2020, 1, 15));
   });
 
   testWidgets("controller columns changed", (tester) async {
     final controller = TimetableController(
-      start: DateTime(2020, 1, 1, 10, 0),
+      headerConfig: TimetableHeaderConfig.dateTimeHeader(
+          start: DateTime(2020, 1, 1, 10, 0), format: DateFormat.H()),
     );
     await tester.pumpWidget(
       MaterialApp(
@@ -172,7 +190,8 @@ void main() {
 
   testWidgets("controller columns changed", (tester) async {
     final controller = TimetableController(
-      start: DateTime(2020, 1, 1),
+      headerConfig: TimetableHeaderConfig.dateTimeHeader(
+          start: DateTime(2020, 1, 1), format: DateFormat.H()),
     );
     await tester.pumpWidget(
       MaterialApp(

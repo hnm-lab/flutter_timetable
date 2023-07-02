@@ -1,17 +1,18 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:flutter_timetable/flutter_timetable.dart';
+import 'package:flutter_timetable/src/timetable_header_cell.dart';
 
 /// A controller for the timetable.
 ///
 /// The controller allow initialization of the timetable and to expose timetable functionality to the outside.
-class TimetableController {
+class TimetableController<Header> {
   TimetableController({
     /// The number of day columns to show.
     int initialColumns = 3,
-
-    /// The start date (first column) of the timetable. Default is today.
-    DateTime? start,
+    this.startHour = 0,
+    this.endHour = 23,
+    required TimetableHeaderConfig<Header> headerConfig,
 
     /// The height of each cell in the timetable. Default is 50.
     double? cellHeight,
@@ -24,24 +25,34 @@ class TimetableController {
 
     /// Controller event listener.
     Function(TimetableControllerEvent)? onEvent,
+    this.dateOfTable,
   }) {
     _columns = initialColumns;
-    _start = DateUtils.dateOnly(start ?? DateTime.now());
+    _headers = headerConfig.headers;
+    _headerNameFormatter = headerConfig.nameFormatter;
     _cellHeight = cellHeight ?? 50;
     _headerHeight = headerHeight ?? 50;
     _timelineWidth = timelineWidth ?? 50;
-    _visibleDateStart = _start;
+    _visibleTimetableCellHeader = _headers.first;
+    duration = Duration(hours: (endHour - startHour) + 1);
     if (onEvent != null) addListener(onEvent);
   }
 
-  late DateTime _start;
+  final int startHour;
+  final int endHour;
+  late final Duration duration;
 
-  /// The [start] date (first column) of the timetable.
-  DateTime get start => _start;
-  set start(DateTime value) {
-    _start = DateUtils.dateOnly(value);
-    dispatch(TimetableStartChanged(_start));
+  List<TimetableHeader<Header>> get headers => _headers;
+
+  set cellHeaders(List<TimetableHeader<Header>> headers) {
+    _headers = headers;
+    dispatch(TimetableCellHeadersChanged(headers));
   }
+
+  late List<TimetableHeader<Header>> _headers;
+
+  late HeaderNameFormatter<Header> _headerNameFormatter;
+  HeaderNameFormatter<Header> get headerNameFormatter => _headerNameFormatter;
 
   int _columns = 3;
 
@@ -66,10 +77,13 @@ class TimetableController {
   /// The current width of the timeline where hour labels are rendered.
   double get timelineWidth => _timelineWidth;
 
-  late DateTime _visibleDateStart;
+  DateTime? dateOfTable;
 
-  /// The first date of the visible area of the timetable.
-  DateTime get visibleDateStart => _visibleDateStart;
+  late TimetableHeader<Header> _visibleTimetableCellHeader;
+
+  /// The first header of the visible area of the timetable.
+  TimetableHeader<Header> get visibleTimetableHeader =>
+      _visibleTimetableCellHeader;
 
   /// Allows listening to events dispatched from the timetable
   int addListener(Function(TimetableControllerEvent)? listener) {
@@ -93,8 +107,13 @@ class TimetableController {
   }
 
   /// Scrolls the timetable to the given date and time.
-  void jumpTo(DateTime date) {
-    dispatch(TimetableJumpToRequested(date));
+  @Deprecated('')
+  void jumpToLegacy(DateTime date) {
+    dispatch(TimetableJumpToRequestedLegacy(date));
+  }
+
+  void jumpTo(TimetableCell<Header> cell) {
+    dispatch(TimetableJumpToRequested(cell));
   }
 
   /// Updates the number of columns in the timetable
@@ -112,10 +131,10 @@ class TimetableController {
     dispatch(TimetableCellHeightChanged(height));
   }
 
-  /// This allows the timetable to update the current visible date.
-  void updateVisibleDate(DateTime date) {
-    _visibleDateStart = date;
-    dispatch(TimetableVisibleDateChanged(date));
+  /// This allows the timetable to update the current visible header.
+  void updateVisibleHeader(TimetableHeader<Header> header) {
+    _visibleTimetableCellHeader = header;
+    dispatch(TimetableVisibleHeaderChanged(header));
   }
 }
 
@@ -135,19 +154,37 @@ class TimetableColumnsChanged extends TimetableControllerEvent {
 }
 
 /// Event used to scroll the timetable to a given date and time
-class TimetableJumpToRequested extends TimetableControllerEvent {
-  TimetableJumpToRequested(this.date);
+@Deprecated('')
+class TimetableJumpToRequestedLegacy extends TimetableControllerEvent {
+  TimetableJumpToRequestedLegacy(this.date);
   final DateTime date;
 }
 
+class TimetableJumpToRequested<Header> extends TimetableControllerEvent {
+  final TimetableCell<Header> cell;
+  TimetableJumpToRequested(this.cell);
+}
+
 /// Event dispatched when the start date of the timetable changes
+@Deprecated('')
 class TimetableStartChanged extends TimetableControllerEvent {
   TimetableStartChanged(this.start);
   final DateTime start;
 }
 
+class TimetableCellHeadersChanged extends TimetableControllerEvent {
+  TimetableCellHeadersChanged(this.headers);
+  final List<TimetableHeader> headers;
+}
+
 /// Event dispatched when the visible date of the timetable changes
+@Deprecated('')
 class TimetableVisibleDateChanged extends TimetableControllerEvent {
   TimetableVisibleDateChanged(this.start);
   final DateTime start;
+}
+
+class TimetableVisibleHeaderChanged extends TimetableControllerEvent {
+  TimetableVisibleHeaderChanged(this.header);
+  final TimetableHeader header;
 }

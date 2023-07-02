@@ -1,32 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:kotlin_scope_function/kotlin_scope_function.dart';
 
 import '../flutter_timetable.dart';
 
 /// The [Timetable] widget displays calendar like view of the events that scrolls
 /// horizontally through the days and vertical through the hours.
 /// <img src="https://github.com/yourfriendken/flutter_timetable/raw/main/images/default.gif" width="400" />
-class Timetable<T> extends StatefulWidget {
-  /// [TimetableController] is the controller that also initialize the timetable.
-  final TimetableController? controller;
+class Timetable<Value, Header> extends StatefulWidget {
+  /// [TimetableController] is the widget.controller that also initialize the timetable.
+  final TimetableController<Header> controller;
 
   /// Renders for the cells the represent each hour that provides that [DateTime] for that hour
-  final Widget Function(DateTime)? cellBuilder;
+  @Deprecated('')
+  final Widget Function(DateTime)? cellBuilderLegacy;
+  final Widget Function(TimetableCell<Header>)? cellBuilder;
 
   /// Renders for the header that provides the [DateTime] for the day
-  final Widget Function(DateTime)? headerCellBuilder;
+  @Deprecated('')
+  final Widget Function(DateTime)? headerCellBuilderLegacy;
+  final Widget Function(TimetableHeader<Header>)? headerCellBuilder;
 
   /// Timetable items to display in the timetable
-  final List<TimetableItem<T>> items;
+  final List<TimetableItem<Value, Header>> items;
 
   /// Renders event card from `TimetableItem<T>` for each item
-  final Widget Function(TimetableItem<T>)? itemBuilder;
+  final Widget Function(TimetableItem<Value, Header>)? itemBuilder;
 
   /// Renders hour label given [TimeOfDay] for each hour
-  final Widget Function(TimeOfDay time)? hourLabelBuilder;
+  final Widget Function(int hour)? hourLabelBuilder;
 
   /// Renders upper left corner of the timetable given the first visible date
-  final Widget Function(DateTime current)? cornerBuilder;
+  final Widget Function(TimetableHeader<Header> current)? cornerBuilder;
 
   /// Snap to hour column. Default is `true`.
   final bool snapToDay;
@@ -39,9 +43,11 @@ class Timetable<T> extends StatefulWidget {
   /// <img src="https://github.com/yourfriendken/flutter_timetable/raw/main/images/default.gif" width="400" />
   const Timetable({
     Key? key,
-    this.controller,
+    required this.controller,
     this.cellBuilder,
+    @Deprecated('') this.cellBuilderLegacy,
     this.headerCellBuilder,
+    @Deprecated('') this.headerCellBuilderLegacy,
     this.items = const [],
     this.itemBuilder,
     this.hourLabelBuilder,
@@ -51,25 +57,25 @@ class Timetable<T> extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<Timetable<T>> createState() => _TimetableState<T>();
+  State<Timetable<Value, Header>> createState() =>
+      _TimetableState<Value, Header>();
 }
 
-class _TimetableState<T> extends State<Timetable<T>> {
+class _TimetableState<Value, Header> extends State<Timetable<Value, Header>> {
   final _dayScrollController = ScrollController();
   final _dayHeadingScrollController = ScrollController();
   final _timeScrollController = ScrollController();
   double columnWidth = 50.0;
-  TimetableController controller = TimetableController();
   final _key = GlobalKey();
   Color get nowIndicatorColor =>
       widget.nowIndicatorColor ?? Theme.of(context).indicatorColor;
   int? _listenerId;
   @override
   void initState() {
-    controller = widget.controller ?? controller;
-    _listenerId = controller.addListener(_eventHandler);
+    // TODO(tkc): ここでaddListenerするとsetStateでrebuildした場合に、古いcontrollerがlistenerを握ったままになってリークしそう。
+    _listenerId = widget.controller.addListener(_eventHandler);
     if (widget.items.isNotEmpty) {
-      widget.items.sort((a, b) => a.start.compareTo(b.start));
+      widget.items.sort((a, b) => a.start.hour.compareTo(b.start.hour));
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => adjustColumnWidth());
 
@@ -78,9 +84,10 @@ class _TimetableState<T> extends State<Timetable<T>> {
 
   @override
   void dispose() {
-    if (_listenerId != null) {
-      controller.removeListener(_listenerId!);
-    }
+    _listenerId?.also((it) {
+      widget.controller.removeListener(it);
+    });
+
     _dayScrollController.dispose();
     _dayHeadingScrollController.dispose();
     _timeScrollController.dispose();
@@ -88,15 +95,15 @@ class _TimetableState<T> extends State<Timetable<T>> {
   }
 
   _eventHandler(TimetableControllerEvent event) async {
-    if (event is TimetableJumpToRequested) {
-      _jumpTo(event.date);
+    if (event is TimetableJumpToRequested<Header>) {
+      _jumpTo(event.cell);
     }
 
     if (event is TimetableColumnsChanged) {
-      final prev = controller.visibleDateStart;
+      final visibleHeader = widget.controller.visibleTimetableHeader;
       final now = DateTime.now();
       await adjustColumnWidth();
-      _jumpTo(DateTime(prev.year, prev.month, prev.day, now.hour, now.minute));
+      _jumpTo(TimetableCell(now.hour, visibleHeader));
       return;
     }
 
@@ -109,8 +116,8 @@ class _TimetableState<T> extends State<Timetable<T>> {
     if (box.hasSize) {
       final size = box.size;
       final layoutWidth = size.width;
-      final width =
-          (layoutWidth - controller.timelineWidth) / controller.columns;
+      final width = (layoutWidth - widget.controller.timelineWidth) /
+          widget.controller.columns;
       if (width != columnWidth) {
         columnWidth = width;
         await Future.microtask(() => null);
@@ -123,203 +130,246 @@ class _TimetableState<T> extends State<Timetable<T>> {
   bool _isHeaderScrolling = false;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-      key: _key,
-      builder: (context, constraints) {
-        return Column(
-          children: [
-            SizedBox(
-              height: controller.headerHeight,
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: controller.timelineWidth,
-                    height: controller.headerHeight,
-                    child: _buildCorner(),
-                  ),
-                  Expanded(
-                    child: NotificationListener<ScrollNotification>(
-                      onNotification: (notification) {
-                        if (_isTableScrolling) return false;
-                        if (notification is ScrollEndNotification) {
-                          _snapToCloset();
-                          _updateVisibleDate();
-                          _isHeaderScrolling = false;
-                          return true;
-                        }
-                        _isHeaderScrolling = true;
-                        _dayScrollController.jumpTo(
-                            _dayHeadingScrollController.position.pixels);
-                        return false;
-                      },
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        controller: _dayHeadingScrollController,
-                        itemExtent: columnWidth,
-                        itemBuilder: (context, i) => SizedBox(
-                          width: columnWidth,
-                          child: _buildHeaderCell(i),
+  Widget build(BuildContext context) {
+    final timetableHeight =
+        widget.controller.cellHeight * widget.controller.duration.inHours;
+    return LayoutBuilder(
+        key: _key,
+        builder: (context, constraints) {
+          return Column(
+            children: [
+              SizedBox(
+                height: widget.controller.headerHeight,
+                child: Row(
+                  children: [
+                    // Corner
+                    SizedBox(
+                      width: widget.controller.timelineWidth,
+                      height: widget.controller.headerHeight,
+                      child: _buildCorner(),
+                    ),
+                    // Header
+                    Expanded(
+                      child: NotificationListener<ScrollNotification>(
+                        onNotification: (notification) {
+                          if (_isTableScrolling) return false;
+                          if (notification is ScrollEndNotification) {
+                            _snapToCloset();
+                            _updateVisibleDate();
+                            _isHeaderScrolling = false;
+                            return true;
+                          }
+                          _isHeaderScrolling = true;
+                          _dayScrollController.jumpTo(
+                              _dayHeadingScrollController.position.pixels);
+                          return false;
+                        },
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          controller: _dayHeadingScrollController,
+                          itemExtent: columnWidth,
+                          itemCount: widget.controller.headers.length,
+                          itemBuilder: (context, i) => SizedBox(
+                            width: columnWidth,
+                            child: _buildHeaderCell(i),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (notification) {
-                  if (_isHeaderScrolling) return false;
+              Expanded(
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: (notification) {
+                    if (_isHeaderScrolling) return false;
 
-                  if (notification is ScrollEndNotification) {
-                    _snapToCloset();
-                    _updateVisibleDate();
-                    _isTableScrolling = false;
+                    if (notification is ScrollEndNotification) {
+                      _snapToCloset();
+                      _updateVisibleDate();
+                      _isTableScrolling = false;
+                      return true;
+                    }
+                    _isTableScrolling = true;
+                    _dayHeadingScrollController
+                        .jumpTo(_dayScrollController.position.pixels);
                     return true;
-                  }
-                  _isTableScrolling = true;
-                  _dayHeadingScrollController
-                      .jumpTo(_dayScrollController.position.pixels);
-                  return true;
-                },
-                child: SingleChildScrollView(
-                  controller: _timeScrollController,
-                  child: SizedBox(
-                    // TODO(tkc): 24時間以上にする必要がある。24が散らばってる。
-                    height: controller.cellHeight * 24.0,
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: controller.timelineWidth,
-                          height: controller.cellHeight * 24.0,
-                          child: Column(
-                            children: [
-                              SizedBox(height: controller.cellHeight / 2),
-                              for (var i = 1; i < 24; i++) //
+                  },
+                  child: SingleChildScrollView(
+                    controller: _timeScrollController,
+                    child: SizedBox(
+                      height: timetableHeight,
+                      child: Row(
+                        children: [
+                          // 時間
+                          SizedBox(
+                            width: widget.controller.timelineWidth,
+                            height: timetableHeight,
+                            child: Column(
+                              children: [
                                 SizedBox(
-                                  height: controller.cellHeight,
-                                  child: Center(
-                                      child: _buildHour(
-                                          TimeOfDay(hour: i, minute: 0))),
-                                ),
-                            ],
+                                    height: widget.controller.cellHeight / 2),
+                                for (var i = widget.controller.startHour + 1;
+                                    i < widget.controller.endHour + 1;
+                                    i++) //
+                                  SizedBox(
+                                    height: widget.controller.cellHeight,
+                                    child: Center(child: _buildHour(i)),
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-                        Expanded(
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            // cacheExtent: 10000.0,
-                            itemExtent: columnWidth,
-                            controller: _dayScrollController,
-                            itemBuilder: (context, index) {
-                              final date =
-                                  controller.start.add(Duration(days: index));
-                              final events = widget.items
-                                  .where((event) =>
-                                      DateUtils.isSameDay(date, event.start))
-                                  .toList();
-                              final now = DateTime.now();
-                              final isToday = DateUtils.isSameDay(date, now);
-                              return Container(
-                                clipBehavior: Clip.none,
-                                width: columnWidth,
-                                height: controller.cellHeight * 24.0,
-                                child: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    Column(
-                                      children: [
-                                        for (int i = 0; i < 24; i++)
-                                          SizedBox(
-                                            width: columnWidth,
-                                            height: controller.cellHeight,
-                                            child: Center(
-                                              child: _buildCell(
-                                                  DateUtils.dateOnly(date)
-                                                      .add(Duration(hours: i))),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                    for (final TimetableItem<T> event in events)
-                                      Positioned(
-                                        top: (event.start.hour +
-                                                (event.start.minute / 60)) *
-                                            controller.cellHeight,
-                                        width: columnWidth,
-                                        height: event.duration.inMinutes *
-                                            controller.cellHeight /
-                                            60,
-                                        child: _buildEvent(event),
-                                      ),
-                                    if (isToday)
-                                      Positioned(
-                                        top: ((now.hour + (now.minute / 60.0)) *
-                                                controller.cellHeight) -
-                                            1,
-                                        width: columnWidth,
-                                        child: Stack(
-                                          clipBehavior: Clip.none,
-                                          children: [
-                                            Container(
-                                              clipBehavior: Clip.none,
-                                              color: nowIndicatorColor,
-                                              height: 2,
-                                              width: columnWidth + 1,
-                                            ),
-                                            Positioned(
-                                              top: -2,
-                                              left: -2,
-                                              child: Container(
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: nowIndicatorColor,
+                          // セル
+                          Expanded(
+                            child: Stack(
+                              children: [
+                                ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  // cacheExtent: 10000.0,
+                                  itemExtent: columnWidth,
+                                  controller: _dayScrollController,
+                                  itemCount: widget.controller.headers.length,
+                                  itemBuilder: (context, index) {
+                                    final header =
+                                        widget.controller.headers[index];
+                                    final events = widget.items
+                                        .where((item) => item.header == header)
+                                        .toList();
+                                    final now = DateTime.now();
+                                    final bool isToday;
+                                    final headerValue = header.value;
+                                    if (headerValue is DateTime) {
+                                      // TODO(tkc): 24時超えると正しく動かなそう
+                                      isToday =
+                                          DateUtils.isSameDay(headerValue, now);
+                                    } else {
+                                      isToday = false;
+                                    }
+                                    return Container(
+                                      clipBehavior: Clip.none,
+                                      width: columnWidth,
+                                      height: timetableHeight,
+                                      child: Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          Column(
+                                            children: [
+                                              for (int i = widget
+                                                      .controller.startHour;
+                                                  i <
+                                                      widget.controller
+                                                              .endHour +
+                                                          1;
+                                                  i++)
+                                                SizedBox(
+                                                  width: columnWidth,
+                                                  height: widget
+                                                      .controller.cellHeight,
+                                                  child: Center(
+                                                    child: _buildCell(
+                                                      TimetableCell(i, header),
+                                                    ),
+                                                  ),
                                                 ),
-                                                height: 6,
-                                                width: 6,
+                                            ],
+                                          ),
+                                          // Timetable items
+                                          for (final event in events)
+                                            Positioned(
+                                              top: (event.start.hour -
+                                                      widget.controller
+                                                          .startHour +
+                                                      (event.start.minute /
+                                                          60)) *
+                                                  widget.controller.cellHeight,
+                                              width: columnWidth,
+                                              height: event.duration.inMinutes *
+                                                  widget.controller.cellHeight /
+                                                  60,
+                                              child: _buildEvent(event),
+                                            ),
+                                          if (isToday)
+                                            // Now line
+                                            Positioned(
+                                              top: ((now.hour +
+                                                          (now.minute / 60.0)) *
+                                                      widget.controller
+                                                          .cellHeight) -
+                                                  1,
+                                              width: columnWidth,
+                                              child: Stack(
+                                                clipBehavior: Clip.none,
+                                                children: [
+                                                  Container(
+                                                    clipBehavior: Clip.none,
+                                                    color: nowIndicatorColor,
+                                                    height: 2,
+                                                    width: columnWidth + 1,
+                                                  ),
+                                                  Positioned(
+                                                    top: -2,
+                                                    left: -2,
+                                                    child: Container(
+                                                      decoration: BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        color:
+                                                            nowIndicatorColor,
+                                                      ),
+                                                      height: 6,
+                                                      width: 6,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                          ],
-                                        ),
+                                        ],
                                       ),
-                                  ],
+                                    );
+                                  },
                                 ),
-                              );
-                            },
+                                if (!_isDateTimeHeader &&
+                                    widget.controller.dateOfTable?.let((it) =>
+                                            DateUtils.isSameDay(
+                                                it, DateTime.now())) ==
+                                        true)
+                                  _nowLine(DateTime.now()),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
-        );
-      });
+            ],
+          );
+        });
+  }
 
-  final _dateFormatter = DateFormat('MMM\nd');
+  bool get _isDateTimeHeader =>
+      widget.controller.headers.first.value is DateTime;
 
   Widget _buildHeaderCell(int i) {
-    // TODO(tkc): 日付以外に対応させないと
-    final date = controller.start.add(Duration(days: i));
+    final header = widget.controller.headers[i];
     if (widget.headerCellBuilder != null) {
-      return widget.headerCellBuilder!(date);
+      return widget.headerCellBuilder!(header);
     }
-    final weight = DateUtils.isSameDay(date, DateTime.now()) //
-        ? FontWeight.bold
-        : FontWeight.normal;
+    // TODO(tkc): デフォなら太字に…できるならしたい
+    // final weight = DateUtils.isSameDay(date, DateTime.now())
+    //     ? FontWeight.bold
+    //     : FontWeight.normal;
     return Center(
       child: Text(
-        _dateFormatter.format(date),
-        style: TextStyle(fontSize: 12, fontWeight: weight),
+        widget.controller.headerNameFormatter.call(header),
+        style: const TextStyle(fontSize: 12),
         textAlign: TextAlign.center,
       ),
     );
   }
 
-  Widget _buildCell(DateTime date) {
-    if (widget.cellBuilder != null) return widget.cellBuilder!(date);
+  Widget _buildCell(TimetableCell<Header> cell) {
+    if (widget.cellBuilder != null) return widget.cellBuilder!(cell);
 
     return Container(
       decoration: BoxDecoration(
@@ -331,26 +381,31 @@ class _TimetableState<T> extends State<Timetable<T>> {
     );
   }
 
-  Widget _buildHour(TimeOfDay time) {
-    if (widget.hourLabelBuilder != null) return widget.hourLabelBuilder!(time);
-    return Text(time.format(context), style: const TextStyle(fontSize: 11));
+  Widget _buildHour(int hour) {
+    if (widget.hourLabelBuilder != null) return widget.hourLabelBuilder!(hour);
+    return Text('$hour:00', style: const TextStyle(fontSize: 11));
   }
 
   Widget _buildCorner() {
-    if (widget.cornerBuilder != null) {
-      return widget.cornerBuilder!(controller.visibleDateStart);
+    final customCorner =
+        widget.cornerBuilder?.call(widget.controller.visibleTimetableHeader);
+    if (customCorner != null) {
+      return customCorner;
     }
-    return Center(
+    // TODO(tkc): dateの場合は年を出したい
+    return const Center(
       child: Text(
-        "${controller.visibleDateStart.year}",
+        '',
         textAlign: TextAlign.center,
       ),
     );
   }
 
-  final _hmma = DateFormat("h:mm a");
-  Widget _buildEvent(TimetableItem<T> event) {
+  Widget _buildEvent(TimetableItem<Value, Header> event) {
     if (widget.itemBuilder != null) return widget.itemBuilder!(event);
+
+    final start = TimeOfDay(hour: event.start.hour, minute: event.start.minute);
+    final end = TimeOfDay(hour: event.end.hour, minute: event.end.minute);
     return Container(
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
@@ -362,7 +417,7 @@ class _TimetableState<T> extends State<Timetable<T>> {
         ),
       ),
       child: Text(
-        "${_hmma.format(event.start)} - ${_hmma.format(event.end)}",
+        "${start.hourOfPeriod}:${start.minute} ${start.period} - ${end.hourOfPeriod}:${end.minute} ${end.period}",
         style: TextStyle(
           fontSize: 10,
           color: Theme.of(context).colorScheme.onSurface,
@@ -370,6 +425,36 @@ class _TimetableState<T> extends State<Timetable<T>> {
       ),
     );
   }
+
+  Widget _nowLine(DateTime now) => Positioned(
+        top: ((now.hour - widget.controller.startHour + (now.minute / 60.0)) *
+                widget.controller.cellHeight) -
+            1,
+        width: columnWidth * widget.controller.columns,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              clipBehavior: Clip.none,
+              color: nowIndicatorColor,
+              height: 2,
+              width: (columnWidth * widget.controller.columns) + 1,
+            ),
+            Positioned(
+              top: -2,
+              left: -2,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: nowIndicatorColor,
+                ),
+                height: 6,
+                width: 6,
+              ),
+            ),
+          ],
+        ),
+      );
 
   bool _isSnapping = false;
   final _animationDuration = const Duration(milliseconds: 300);
@@ -394,20 +479,20 @@ class _TimetableState<T> extends State<Timetable<T>> {
   }
 
   _updateVisibleDate() async {
-    final date = controller.start.add(Duration(
-      days: _dayHeadingScrollController.position.pixels ~/ columnWidth,
-    ));
-    if (date != controller.visibleDateStart) {
-      controller.updateVisibleDate(date);
+    final index = _dayHeadingScrollController.position.pixels ~/ columnWidth;
+    final header = widget.controller.headers[index];
+    if (header != widget.controller.visibleTimetableHeader) {
+      widget.controller.updateVisibleHeader(header);
       setState(() {});
     }
   }
 
-  Future _jumpTo(DateTime date) async {
+  Future _jumpTo(TimetableCell<Header> cell) async {
     final datePosition =
-        (date.difference(controller.start).inDays) * columnWidth;
-    final hourPosition =
-        ((date.hour) * controller.cellHeight) - (controller.cellHeight / 2);
+        widget.controller.headers.indexOf(cell.header) * columnWidth;
+    final hourPosition = ((cell.hour - widget.controller.startHour) *
+            widget.controller.cellHeight) -
+        (widget.controller.cellHeight / 2);
     await Future.wait([
       _dayScrollController.animateTo(
         datePosition,
