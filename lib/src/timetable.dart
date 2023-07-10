@@ -69,11 +69,10 @@ class _TimetableState<Value, Header> extends State<Timetable<Value, Header>> {
   final _key = GlobalKey();
   Color get nowIndicatorColor =>
       widget.nowIndicatorColor ?? Theme.of(context).indicatorColor;
-  int? _listenerId;
+  TimetableController? _controller;
+
   @override
   void initState() {
-    // TODO(tkc): ここでaddListenerするとsetStateでrebuildした場合に、古いcontrollerがlistenerを握ったままになってリークしそう。
-    _listenerId = widget.controller.addListener(_eventHandler);
     if (widget.items.isNotEmpty) {
       widget.items.sort((a, b) => a.start.hour.compareTo(b.start.hour));
     }
@@ -84,10 +83,6 @@ class _TimetableState<Value, Header> extends State<Timetable<Value, Header>> {
 
   @override
   void dispose() {
-    _listenerId?.also((it) {
-      widget.controller.removeListener(it);
-    });
-
     _dayScrollController.dispose();
     _dayHeadingScrollController.dispose();
     _timeScrollController.dispose();
@@ -131,6 +126,11 @@ class _TimetableState<Value, Header> extends State<Timetable<Value, Header>> {
 
   @override
   Widget build(BuildContext context) {
+    _controller?.clearListeners();
+    _controller = widget.controller.also((it) {
+      it.addListener(_eventHandler);
+    });
+
     final timetableHeight =
         widget.controller.cellHeight * widget.controller.duration.inHours;
     return LayoutBuilder(
