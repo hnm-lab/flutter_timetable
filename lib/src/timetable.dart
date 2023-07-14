@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:kotlin_scope_function/kotlin_scope_function.dart';
 
+import './extensions.dart';
 import '../flutter_timetable.dart';
 
 /// The [Timetable] widget displays calendar like view of the events that scrolls

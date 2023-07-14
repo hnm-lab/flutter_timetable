@@ -74,13 +74,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.18.1"
-  kotlin_scope_function:
-    dependency: transitive
-    description:
-      name: kotlin_scope_function
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "1.0.2"
   lints:
     dependency: transitive
     description:

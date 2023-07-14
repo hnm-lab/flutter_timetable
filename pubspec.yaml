@@ -11,7 +11,6 @@ dependencies:
   flutter:
     sdk: flutter
   intl: ^0.18.0
-  kotlin_scope_function: ^1.0.2
 
 dev_dependencies:
   flutter_test:

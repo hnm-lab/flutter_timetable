@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_timetable/src/extensions.dart';
 import 'package:intl/intl.dart';
-import 'package:kotlin_scope_function/kotlin_scope_function.dart';
 
 class TimetableHeaderConfig<Header> {
   final List<TimetableHeader<Header>> headers;
@@ -16,7 +16,7 @@ class TimetableHeaderConfig<Header> {
           required DateFormat format,
           int duration = 7}) =>
       TimetableHeaderConfig<DateTime>(
-        start.let(
+        DateUtils.dateOnly(start).let(
           (now) => List<TimetableHeader<DateTime>>.generate(
             duration,
             (index) => now.add(Duration(days: index)).let(
