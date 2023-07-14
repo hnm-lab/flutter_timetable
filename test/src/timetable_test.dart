@@ -7,14 +7,14 @@ void main() {
   testWidgets("Timetable", (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: Timetable(
+        home: Timetable<dynamic, DateTime>(
           key: const Key("TEST"),
           controller: TimetableController(
               headerConfig: TimetableHeaderConfig.defaultDateTimeHeader),
         ),
       ),
     );
-    expect(find.byType(Timetable), findsOneWidget);
+    expect(find.byType(Timetable<dynamic, DateTime>), findsOneWidget);
     expect(find.byKey(const Key("TEST")), findsOneWidget);
   });
   testWidgets("Timetable sorts items", (WidgetTester tester) async {
@@ -30,7 +30,7 @@ void main() {
     ];
     await tester.pumpWidget(
       MaterialApp(
-        home: Timetable(
+        home: Timetable<dynamic, DateTime>(
           items: items,
           controller: TimetableController(
               headerConfig: TimetableHeaderConfig.defaultDateTimeHeader),
@@ -44,61 +44,61 @@ void main() {
   testWidgets("Timetable with custom header cell", (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: Timetable(
-          headerCellBuilder: (header) => Text(header.toString()),
+        home: Timetable<dynamic, DateTime>(
+          headerCellBuilder: (header) => Text(header.value.day.toString()),
           controller: TimetableController(
               headerConfig: TimetableHeaderConfig.defaultDateTimeHeader),
         ),
       ),
     );
     final today = DateUtils.dateOnly(DateTime.now());
-    expect(find.text(today.toString()), findsOneWidget);
+    expect(find.text(today.day.toString()), findsOneWidget);
   });
 
   testWidgets("Timetable with custom cell", (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: Timetable(
-          cellBuilder: (cell) => Text(cell.toString()),
+        home: Timetable<dynamic, DateTime>(
+          cellBuilder: (cell) => Text('${cell.header.value.day}-${cell.hour}'),
           controller: TimetableController(
               headerConfig: TimetableHeaderConfig.defaultDateTimeHeader),
         ),
       ),
     );
     final today = DateUtils.dateOnly(DateTime.now());
-    expect(find.text(today.toString()), findsOneWidget);
+    expect(find.text('${today.day}-${today.hour}'), findsOneWidget);
   });
 
   testWidgets("Timetable with custom hour label", (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: Timetable(
+        home: Timetable<dynamic, DateTime>(
           hourLabelBuilder: (hour) => Text(hour.toString()),
           controller: TimetableController(
               headerConfig: TimetableHeaderConfig.defaultDateTimeHeader),
         ),
       ),
     );
-    expect(find.text(const TimeOfDay(hour: 12, minute: 0).toString()),
+    expect(find.text(const TimeOfLongDay(hour: 12, minute: 0).hour.toString()),
         findsOneWidget);
   });
 
   testWidgets("Timetable with custom day label", (WidgetTester tester) async {
     final items = [
       TimetableItem.dateTime(
-        start: DateTime(2020, 1, 1, 10, 0),
-        end: DateTime(2020, 1, 1, 11, 0),
+        start: DateTime(2020, 1, 1, 3, 0),
+        end: DateTime(2020, 1, 1, 4, 0),
         data: "test",
       ),
       TimetableItem.dateTime(
-        start: DateTime(2020, 1, 1, 9, 0),
-        end: DateTime(2020, 1, 1, 10, 0),
+        start: DateTime(2020, 1, 1, 1, 0),
+        end: DateTime(2020, 1, 1, 2, 0),
         data: "test 2",
       ),
     ];
     final controller = TimetableController<DateTime>(
       headerConfig: TimetableHeaderConfig.dateTimeHeader(
-          start: DateTime(2020, 1, 1, 10, 0), format: DateFormat.H()),
+          start: DateTime(2020, 1, 1), format: DateFormat.H()),
     );
     await tester.pumpWidget(
       MaterialApp(
@@ -139,7 +139,7 @@ void main() {
   testWidgets("Timetable custom corner", (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: Timetable(
+        home: Timetable<dynamic, DateTime>(
           cornerBuilder: (_) => const Text("TEST"),
           controller: TimetableController(
             headerConfig: TimetableHeaderConfig.defaultDateTimeHeader,
@@ -157,16 +157,16 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: Timetable(
+        home: Timetable<dynamic, DateTime>(
           controller: controller,
         ),
       ),
     );
     await tester.pumpAndSettle();
     expect(controller.visibleTimetableHeader.value, DateTime(2020, 1, 1));
-    controller.jumpTo(TimetableCell.fromDateTime(DateTime(2020, 1, 15, 11)));
+    controller.jumpTo(TimetableCell.fromDateTime(DateTime(2020, 1, 6, 11)));
     await tester.pumpAndSettle();
-    expect(controller.visibleTimetableHeader.value, DateTime(2020, 1, 15));
+    expect(controller.visibleTimetableHeader.value, DateTime(2020, 1, 6));
   });
 
   testWidgets("controller columns changed", (tester) async {
@@ -176,7 +176,7 @@ void main() {
     );
     await tester.pumpWidget(
       MaterialApp(
-        home: Timetable(
+        home: Timetable<dynamic, DateTime>(
           controller: controller,
           headerCellBuilder: (_) => const Text("TEST"),
         ),
@@ -188,24 +188,27 @@ void main() {
     expect(find.text("TEST"), findsNWidgets(2));
   });
 
-  testWidgets("controller columns changed", (tester) async {
+  testWidgets("Swipe columns", (tester) async {
     final controller = TimetableController(
       headerConfig: TimetableHeaderConfig.dateTimeHeader(
           start: DateTime(2020, 1, 1), format: DateFormat.H()),
     );
+    final format = DateFormat('MMM=d').format;
     await tester.pumpWidget(
       MaterialApp(
-        home: Timetable(
+        home: Timetable<dynamic, DateTime>(
           controller: controller,
-          headerCellBuilder: (date) => Text(date.toString()),
+          headerCellBuilder: (header) => Text(format(header.value)),
         ),
       ),
     );
 
     // drag to the left
     await tester.drag(
-        find.text(DateTime(2020, 1, 1).toString()), const Offset(-200, -200));
+        find.text(format(DateTime(2020, 1, 1))), const Offset(-400, -200));
     await tester.pumpAndSettle();
-    expect(find.text(DateTime(2020, 1, 4).toString()), findsOneWidget);
+    expect(find.text(format(DateTime(2020, 1, 1))), findsOneWidget);
+    // TODO(tkc): スクロールがうまくできてないのか、skipOffstageならpassする
+    expect(find.text(format(DateTime(2020, 1, 4))), findsOneWidget);
   });
 }

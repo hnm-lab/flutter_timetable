@@ -4,14 +4,19 @@ import 'package:intl/intl.dart';
 class TimetableHeaderConfig<Header> {
   final List<TimetableHeader<Header>> headers;
   final HeaderNameFormatter<Header> nameFormatter;
+  static const _defaultDateTimeHeaderDuration = 14;
 
   TimetableHeaderConfig(this.headers, this.nameFormatter);
 
   static final defaultDateTimeHeader = dateTimeHeader(
-      start: DateTime.now(), format: DateFormat('MMM\nd'), duration: 7);
+      start: DateTime.now(),
+      format: DateFormat('MMM\nd'),
+      duration: _defaultDateTimeHeaderDuration);
 
   static TimetableHeaderConfig<DateTime> dateTimeHeader(
-      {required DateTime start, required DateFormat format, int duration = 7}) {
+      {required DateTime start,
+      required DateFormat format,
+      int duration = _defaultDateTimeHeaderDuration}) {
     final now = DateUtils.dateOnly(start);
     final headers = List<TimetableHeader<DateTime>>.generate(
       duration,
@@ -55,9 +60,10 @@ class TimetableCell<Header> {
   final TimetableHeader<Header> header;
 
   TimetableCell(this.hour, this.header);
-  // TODO(tkc): headerのdate timeは日付以外不要。
+
   static TimetableCell<DateTime> fromDateTime(DateTime dateTime) =>
-      TimetableCell(dateTime.hour, TimetableHeader<DateTime>(dateTime));
+      TimetableCell(dateTime.hour,
+          TimetableHeader<DateTime>(DateUtils.dateOnly(dateTime)));
 
   TimeOfDay get timeOfDay => TimeOfDay(hour: hour, minute: 0);
 

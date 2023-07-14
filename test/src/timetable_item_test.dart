@@ -9,7 +9,7 @@ void main() {
         end: DateTime(2020, 1, 1, 2),
         data: data);
     expect(item.start, const TimeOfLongDay(hour: 1, minute: 0));
-    expect(item.end.hour, const TimeOfLongDay(hour: 2, minute: 0));
+    expect(item.end, const TimeOfLongDay(hour: 2, minute: 0));
     expect(item.duration, const Duration(hours: 1));
     expect(item.data, isA<String>());
     expect(item.data, data);

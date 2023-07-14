@@ -17,8 +17,8 @@ void main() {
     controller.cellHeaders = [TimetableHeader(DateTime.now())];
     expect(controller.headers, isNotNull);
     expect(event, isA<TimetableCellHeadersChanged>());
-    expect(event.start, isNotNull);
-    expect(event.start, controller.headers);
+    expect(event.headers, isNotNull);
+    expect(event.headers, controller.headers);
   });
 
   test("TimetableController.columns", () {
@@ -53,11 +53,12 @@ void main() {
     final controller = TimetableController(
         headerConfig: TimetableHeaderConfig.dateTimeHeader(
             start: date, format: DateFormat.H()));
+    final cell = TimetableCell.fromDateTime(date);
     controller.addListener((e) => event = e);
-    controller.jumpTo(TimetableCell.fromDateTime(date));
+    controller.jumpTo(cell);
     expect(event, isA<TimetableJumpToRequested>());
-    expect(event.date, isNotNull);
-    expect(event.date, date);
+    expect(event.cell, isNotNull);
+    expect(event.cell, cell);
   });
 
   test("TimetableController.updateVisibleDate", () {
