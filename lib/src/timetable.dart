@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import './extensions.dart';
 import '../flutter_timetable.dart';
 
 /// The [Timetable] widget displays calendar like view of the events that scrolls
@@ -417,7 +416,7 @@ class _TimetableState<Value, Header> extends State<Timetable<Value, Header>> {
         ),
       ),
       child: Text(
-        "${start.hourOfPeriod}:${start.minute} ${start.period} - ${end.hourOfPeriod}:${end.minute} ${end.period}",
+        "${start.hourOfPeriod}:${start.minute.toString().padLeft(2, '0')} ${start.period.name} - ${end.hourOfPeriod}:${end.minute.toString().padLeft(2, '0')} ${end.period.name}",
         style: TextStyle(
           fontSize: 10,
           color: Theme.of(context).colorScheme.onSurface,
@@ -505,5 +504,16 @@ class _TimetableState<Value, Header> extends State<Timetable<Value, Header>> {
         curve: _animationCurve,
       ),
     ]);
+  }
+}
+
+extension _ObjectE<T extends Object> on T {
+  dynamic let(dynamic Function(T it) dealing) {
+    return dealing(this);
+  }
+
+  T also(void Function(T it) dealing) {
+    dealing(this);
+    return this;
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_timetable/src/extensions.dart';
 import 'package:intl/intl.dart';
 
 class TimetableHeaderConfig<Header> {
@@ -12,20 +11,20 @@ class TimetableHeaderConfig<Header> {
       start: DateTime.now(), format: DateFormat('MMM\nd'), duration: 7);
 
   static TimetableHeaderConfig<DateTime> dateTimeHeader(
-          {required DateTime start,
-          required DateFormat format,
-          int duration = 7}) =>
-      TimetableHeaderConfig<DateTime>(
-        DateUtils.dateOnly(start).let(
-          (now) => List<TimetableHeader<DateTime>>.generate(
-            duration,
-            (index) => now.add(Duration(days: index)).let(
-                  (date) => TimetableHeader<DateTime>(date),
-                ),
-          ),
-        ),
-        (date) => format.format(date.value),
-      );
+      {required DateTime start, required DateFormat format, int duration = 7}) {
+    final now = DateUtils.dateOnly(start);
+    final headers = List<TimetableHeader<DateTime>>.generate(
+      duration,
+      (index) {
+        final date = now.add(Duration(days: index));
+        return TimetableHeader<DateTime>(date);
+      },
+    );
+    return TimetableHeaderConfig<DateTime>(
+      headers,
+      (date) => format.format(date.value),
+    );
+  }
 }
 
 typedef HeaderNameFormatter<Header> = String Function(TimetableHeader<Header>);
