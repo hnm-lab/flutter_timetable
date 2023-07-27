@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../flutter_timetable.dart';
@@ -425,35 +427,13 @@ class _TimetableState<Value, Header> extends State<Timetable<Value, Header>> {
     );
   }
 
-  Widget _nowLine(DateTime now) => Positioned(
-        top: ((now.hour - widget.controller.startHour + (now.minute / 60.0)) *
-                widget.controller.cellHeight) -
-            1,
-        width: columnWidth * widget.controller.columns,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              clipBehavior: Clip.none,
-              color: nowIndicatorColor,
-              height: 2,
-              width: (columnWidth * widget.controller.columns) + 1,
-            ),
-            Positioned(
-              top: -2,
-              left: -2,
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: nowIndicatorColor,
-                ),
-                height: 6,
-                width: 6,
-              ),
-            ),
-          ],
-        ),
-      );
+  // TODO(tkc): デフォルトタイムテーブルの場合のラインも共通化
+  Widget _nowLine(DateTime now) => _NowIndicator(
+      color: nowIndicatorColor,
+      columnWidth: columnWidth,
+      cellHeight: widget.controller.cellHeight,
+      columnCount: widget.controller.columns,
+      startHour: widget.controller.startHour);
 
   bool _isSnapping = false;
   final _animationDuration = const Duration(milliseconds: 300);
@@ -505,6 +485,89 @@ class _TimetableState<Value, Header> extends State<Timetable<Value, Header>> {
       ),
     ]);
   }
+}
+
+class _NowIndicator extends StatefulWidget {
+  final Color color;
+  final double columnWidth;
+  final double cellHeight;
+  final int columnCount;
+  final int startHour;
+
+  const _NowIndicator(
+      {required this.color,
+      required this.columnWidth,
+      required this.cellHeight,
+      required this.columnCount,
+      required this.startHour});
+  @override
+  _NowIndicatorState createState() => _NowIndicatorState();
+}
+
+class _NowIndicatorState extends State<_NowIndicator> {
+  Timer? timer;
+  @override
+  void initState() {
+    timer = Timer.periodic(
+        const Duration(minutes: 1),
+        (timer) => setState(() {
+              // Rebuild to rewrite the line
+            }));
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _nowLine(
+        now: DateTime.now(),
+        nowIndicatorColor: widget.color,
+        columnWidth: widget.columnWidth,
+        cellHeight: widget.cellHeight,
+        columnCount: widget.columnCount,
+        startHour: widget.startHour);
+  }
+
+  Widget _nowLine({
+    required DateTime now,
+    required Color nowIndicatorColor,
+    required double columnWidth,
+    required double cellHeight,
+    required int columnCount,
+    required int startHour,
+  }) =>
+      Positioned(
+        top: ((now.hour - startHour + (now.minute / 60.0)) * cellHeight) - 1,
+        width: columnWidth * columnCount,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              clipBehavior: Clip.none,
+              color: nowIndicatorColor,
+              height: 2,
+              width: (columnWidth * columnCount) + 1,
+            ),
+            Positioned(
+              top: -2,
+              left: -2,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: nowIndicatorColor,
+                ),
+                height: 6,
+                width: 6,
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 extension _ObjectE<T extends Object> on T {
