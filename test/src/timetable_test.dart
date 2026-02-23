@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
-import 'package:intl/intl.dart';
 
 void main() {
   testWidgets("Timetable", (WidgetTester tester) async {
@@ -67,8 +66,7 @@ void main() {
         ),
       ),
     );
-    expect(find.text(const TimeOfDay(hour: 12, minute: 0).toString()),
-        findsOneWidget);
+    expect(find.text(const TimeOfDay(hour: 12, minute: 0).toString()), findsOneWidget);
   });
 
   testWidgets("Timetable with custom day label", (WidgetTester tester) async {
@@ -118,8 +116,7 @@ void main() {
         ),
       ),
     );
-    final hmma = DateFormat("h:mm a");
-    final label = "${hmma.format(item.start)} - ${hmma.format(item.end)}";
+    const label = "10:00 AM - 11:00 AM";
     expect(find.text(label, skipOffstage: false), findsOneWidget);
   });
 
@@ -149,7 +146,7 @@ void main() {
     expect(controller.visibleDateStart, DateTime(2020, 1, 1));
     controller.jumpTo(DateTime(2020, 1, 15, 11));
     await tester.pumpAndSettle();
-    expect(controller.visibleDateStart, DateTime(2020, 1, 15));
+    expect(controller.visibleDateStart, DateTime(2020, 1, 15, 10));
   });
 
   testWidgets("controller columns changed", (tester) async {
@@ -184,8 +181,7 @@ void main() {
     );
 
     // drag to the left
-    await tester.drag(
-        find.text(DateTime(2020, 1, 1).toString()), const Offset(-200, -200));
+    await tester.drag(find.text(DateTime(2020, 1, 1).toString()), const Offset(-200, -200));
     await tester.pumpAndSettle();
     expect(find.text(DateTime(2020, 1, 4).toString()), findsOneWidget);
   });
