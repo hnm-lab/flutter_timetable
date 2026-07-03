@@ -1,3 +1,32 @@
+# Change Log
+
+## 1.1.6
+
+* Add `startHour` and `endHour` to the `TimetableController` that allows the view to be limited to a specified time range. (Thanks to PR [#4](https://github.com/yourfriendken/flutter_timetable/pull/4) from @parkjbdev)
+
+## 1.1.5
+
+* Remove `intl` dependency to reduce size and minimize conflicts
+
+## 1.1.4
+
+* Update `intl` dependency to `^0.19.0`
+* Update `flutter_lints` dependency to `^1.0.0`
+
+## 1.1.3
+
+* Add `snapAnimationCurve` and `snapAnimationDuration` to the 'Timetable' constructor to allow for customizing the animation when snapping to the time. (Thanks @joemielke)
+* Upgrade dependencies
+
+## 1.1.2
+
+* Calculate the hour when setting the visible date on scroll events.
+
+## 1.1.1
+
+* Update `intl` dependency to `^0.18.0`
+* Upgrade dependencies
+* Allow dart 3
 
 ## 1.1.0
 
@@ -27,9 +56,4 @@
 ## 0.0.1
 
 * Add timetable widget
-
-
-
-
-
 

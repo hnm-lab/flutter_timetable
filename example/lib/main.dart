@@ -29,9 +29,9 @@ class TimetableScreen extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () async => Navigator.pushNamed(context, '/custom'),
-              child: Row(
+              child: const Row(
                 mainAxisSize: MainAxisSize.max,
-                children: const [
+                children: [
                   Icon(Icons.celebration_outlined, color: Colors.white),
                   SizedBox(width: 8),
                   Text(
@@ -102,8 +102,8 @@ class _CustomTimetableScreenState extends State<CustomTimetableScreen> {
           actions: [
             TextButton(
               onPressed: () async => Navigator.pop(context),
-              child: Row(
-                children: const [
+              child: const Row(
+                children: [
                   Icon(Icons.chevron_left_outlined, color: Colors.white),
                   SizedBox(width: 8),
                   Text(

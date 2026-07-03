@@ -36,6 +36,12 @@ class Timetable<Value, Header> extends StatefulWidget {
   /// Snap to hour column. Default is `true`.
   final bool snapToDay;
 
+  /// Snap animation curve. Default is `Curves.bounceOut`
+  final Curve snapAnimationCurve;
+
+  /// Snap animation duration. Default is 300 ms
+  final Duration snapAnimationDuration;
+
   /// Color of indicator line that shows the current time. Default is `Theme.indicatorColor`.
   final Color? nowIndicatorColor;
 
@@ -43,7 +49,7 @@ class Timetable<Value, Header> extends StatefulWidget {
   /// horizontally through the days and vertical through the hours.
   /// <img src="https://github.com/yourfriendken/flutter_timetable/raw/main/images/default.gif" width="400" />
   const Timetable({
-    Key? key,
+    super.key,
     required this.controller,
     this.cellBuilder,
     @Deprecated('') this.cellBuilderLegacy,
@@ -55,7 +61,9 @@ class Timetable<Value, Header> extends StatefulWidget {
     this.nowIndicatorColor,
     this.cornerBuilder,
     this.snapToDay = true,
-  }) : super(key: key);
+    this.snapAnimationDuration = const Duration(milliseconds: 300),
+    this.snapAnimationCurve = Curves.bounceOut,
+  });
 
   @override
   State<Timetable<Value, Header>> createState() =>
@@ -436,8 +444,6 @@ class _TimetableState<Value, Header> extends State<Timetable<Value, Header>> {
       startHour: widget.controller.startHour);
 
   bool _isSnapping = false;
-  final _animationDuration = const Duration(milliseconds: 300);
-  final _animationCurve = Curves.bounceOut;
   Future _snapToCloset() async {
     if (_isSnapping || !widget.snapToDay) return;
     _isSnapping = true;
@@ -446,13 +452,13 @@ class _TimetableState<Value, Header> extends State<Timetable<Value, Header>> {
         ((_dayScrollController.offset) / columnWidth).round() * columnWidth;
     _dayScrollController.animateTo(
       snapPosition,
-      duration: _animationDuration,
-      curve: _animationCurve,
+      duration: widget.snapAnimationDuration,
+      curve: widget.snapAnimationCurve,
     );
     _dayHeadingScrollController.animateTo(
       snapPosition,
-      duration: _animationDuration,
-      curve: _animationCurve,
+      duration: widget.snapAnimationDuration,
+      curve: widget.snapAnimationCurve,
     );
     _isSnapping = false;
   }
@@ -475,13 +481,13 @@ class _TimetableState<Value, Header> extends State<Timetable<Value, Header>> {
     await Future.wait([
       _dayScrollController.animateTo(
         datePosition,
-        duration: _animationDuration,
-        curve: _animationCurve,
+        duration: widget.snapAnimationDuration,
+        curve: widget.snapAnimationCurve,
       ),
       _timeScrollController.animateTo(
         hourPosition,
-        duration: _animationDuration,
-        curve: _animationCurve,
+        duration: widget.snapAnimationDuration,
+        curve: widget.snapAnimationCurve,
       ),
     ]);
   }
