@@ -209,6 +209,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(format(DateTime(2020, 1, 1))), findsOneWidget);
     // TODO(tkc): スクロールがうまくできてないのか、skipOffstageならpassする
-    expect(find.text(format(DateTime(2020, 1, 4))), findsOneWidget);
+    expect(find.text(format(DateTime(2020, 1, 4)), skipOffstage: false),
+        findsOneWidget);
   });
 }
