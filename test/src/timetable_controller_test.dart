@@ -2,6 +2,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
 import 'package:intl/intl.dart';
 
+/// A non-DateTime header value, representing e.g. a festival stage.
+class _Stage {
+  final String name;
+  const _Stage(this.name);
+
+  @override
+  bool operator ==(Object other) => other is _Stage && other.name == name;
+
+  @override
+  int get hashCode => name.hashCode;
+}
+
 void main() {
   test("TimetableController", () {
     final controller = TimetableController(
@@ -116,5 +128,48 @@ void main() {
         headerConfig: TimetableHeaderConfig.defaultDateTimeHeader);
     controller.addListener(null);
     expect(controller.hasListeners, isFalse);
+  });
+
+  test("TimetableController supports non-DateTime header types", () {
+    final stages = [const _Stage('Main Stage'), const _Stage('Second Stage')];
+    final headers = stages.map((s) => TimetableHeader(s)).toList();
+    final controller = TimetableController<_Stage>(
+      headerConfig: TimetableHeaderConfig<_Stage>(
+        headers,
+        (header) => header.value.name,
+      ),
+    );
+    expect(controller.headers, headers);
+    expect(controller.visibleTimetableHeader.value, stages.first);
+    expect(controller.headerNameFormatter(headers[1]), 'Second Stage');
+  });
+
+  test("TimetableController.startHour and endHour default to 0 and 23", () {
+    final controller = TimetableController(
+        headerConfig: TimetableHeaderConfig.defaultDateTimeHeader);
+    expect(controller.startHour, 0);
+    expect(controller.endHour, 23);
+    expect(controller.duration, const Duration(hours: 24));
+  });
+
+  test("TimetableController.startHour and endHour narrow the visible duration",
+      () {
+    final controller = TimetableController(
+      headerConfig: TimetableHeaderConfig.defaultDateTimeHeader,
+      startHour: 9,
+      endHour: 18,
+    );
+    expect(controller.startHour, 9);
+    expect(controller.endHour, 18);
+    expect(controller.duration, const Duration(hours: 10));
+  });
+
+  test("TimetableController.dateOfTable stores the given date", () {
+    final date = DateTime(2024, 8, 1);
+    final controller = TimetableController(
+      headerConfig: TimetableHeaderConfig.defaultDateTimeHeader,
+      dateOfTable: date,
+    );
+    expect(controller.dateOfTable, date);
   });
 }
